@@ -41,9 +41,9 @@ export default new Router({
           name: 'visualization'
         }
       ],
-      // beforeEnter(to, from, next) {
-      //   next(store.state.logged ? true : '/connexion')
-      // }
+      beforeEnter(to, from, next) {
+        next(store.state.logged ? true : '/connexion')
+      }
     },
     {
       path: '/deconnexion',
