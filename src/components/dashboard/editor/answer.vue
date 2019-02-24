@@ -24,21 +24,23 @@
     </div>
 
     <div v-if="answer.editing">
-      <b-field v-if="answer.editing">
+      <b-field>
         <b-input type="textarea" v-model="answer.explanation" placeholder="Explications supplémentaires"></b-input>
       </b-field>
       <b-field>
-        <b-input v-model="answer.nextId" placeholder="Question suivant cette réponse (numéro)"></b-input>
+        <b-input v-model="answer.nextId" placeholder="Question suivant cette réponse (ID)"></b-input>
       </b-field>
     </div>
     <div v-else>
       <p>{{answer.explanation}}</p>
-      <p><strong>Question suivant cette réponse :</strong> {{answer.nextId}}</p>
+      <p v-if="answer.nextId"><strong>Question suivant cette réponse :</strong> {{answer.nextId}}</p>
     </div>
   </section>
 </template>
 
 <script>
+import services from './services';
+
 export default {
   name: "answer",
 
@@ -49,8 +51,19 @@ export default {
   },
 
   methods: {
-    edit() {
-      this.$props.answer.editing = !this.$props.answer.editing;
+    async edit() {
+      try {
+        if (this.$props.answer.editing) {
+          await services.renameAnswer(this.$props.answer);
+        }
+
+        this.$props.answer.editing = !this.$props.answer.editing;
+      } catch (error) {
+        this.$snackbar.open({
+          message: "Une erreur est survenue lors de l'édition du nom.",
+          type: "is-danger"
+        });
+      }
     },
 
     destroy() {
@@ -65,15 +78,6 @@ export default {
     move(direction) {
       this.$emit("move", direction);
     },
-
-    validate(event) {
-      event.preventDefault();
-    },
-
-    cancel(event) {
-      event.preventDefault();
-      this.adding = false;
-    }
   },
 
   computed: {

@@ -58,8 +58,7 @@
         :show-detail-icon="true"
       >
         <template slot-scope="props">
-          <b-table-column field="id" label="Réponse" width="10" numeric>{{ props.row.id }}</b-table-column>
-          <b-table-column field="name" label="Nom">
+          <b-table-column field="name" label="Réponses">
             <b-field v-if="props.row.editing">
               <b-input v-model="props.row.name" placeholder="Intitulé de la réponse"></b-input>
             </b-field>
@@ -81,6 +80,7 @@
 
 <script>
 import Answer from "./answer";
+import services from "./services";
 
 export default {
   name: "question",
@@ -104,8 +104,19 @@ export default {
   },
 
   methods: {
-    edit() {
-      this.$props.question.editing = !this.$props.question.editing;
+    async edit() {
+      try {
+        if (this.$props.question.editing) {
+          await services.renameQuestion(this.$props.question);
+        }
+
+        this.$props.question.editing = !this.$props.question.editing;
+      } catch (error) {
+        this.$snackbar.open({
+          message: "Une erreur est survenue lors de l'édition du nom.",
+          type: "is-danger"
+        });
+      }
     },
 
     toggle(row) {
@@ -121,21 +132,41 @@ export default {
       }
     },
 
-    destroyAnswer(index) {
-      this.answers.splice(index, 1);
+    async destroyAnswer(index) {
+      try {
+        await services.destroyAnswer({ index, questionId: this.$props.question.id });
+
+        this.answers.splice(index, 1);
+      } catch (error) {
+        this.$snackbar.open({
+          message:
+            "Une erreur est survenue lors de la suppression de la catégorie.",
+          type: "is-danger"
+        });
+      }
     },
 
     move(direction) {
       this.$emit("move", direction);
     },
 
-    moveAnswer(index, direction) {
-      if (index || direction == "down") {
-        this.answers.splice(
-          index + (direction == "up" ? -1 : 1),
-          0,
-          this.answers.splice(index, 1)[0]
-        );
+    async moveAnswer(index, direction) {
+      try {
+        await services.moveAnswer(index, direction, this.$props.question.id);
+        
+        if (index || direction == "down") {
+          this.answers.splice(
+            index + (direction == "up" ? -1 : 1),
+            0,
+            this.answers.splice(index, 1)[0]
+          );
+        }
+      } catch (error) {
+        this.$snackbar.open({
+          message:
+            "Une erreur est survenue lors de cette action.",
+          type: "is-danger"
+        });
       }
     },
 
@@ -143,20 +174,34 @@ export default {
       this.adding = true;
     },
 
-    validate(event) {
+    async createAnswer(event) {
       event.preventDefault();
 
-      const id = Math.max(...this.answers.map(answer => answer.id), 0) + 1;
+      try {
+        const answer = await services.createAnswer({
+          ...this.answer,
+          questionId: this.$props.question.id
+        });
 
-      this.answers.push({
-        ...this.answer,
-        id,
-        editing: false,
-        nextId: null
-      });
+        this.answers.push({
+          ...answer,
+          editing: false,
+          answers: []
+        });
 
-      this.answer.name = null;
-      this.answer.explanation = null;
+        this.answer.name = null;
+      } catch (error) {
+        let message =
+          "Une erreur est survenue lors de la création de la réponse.";
+
+        if (error.response && error.response.data == "Validation error")
+          message = "Cette réponse existe déjà.";
+
+        this.$snackbar.open({
+          message,
+          type: "is-danger"
+        });
+      }
     },
 
     cancel(event) {

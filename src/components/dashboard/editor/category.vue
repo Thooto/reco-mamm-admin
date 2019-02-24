@@ -25,7 +25,7 @@
     </div>
 
     <div class="box" v-if="adding">
-      <form @submit="validate">
+      <form @submit="createQuestion">
         <b-field grouped group-multiline>
           <b-input
             required
@@ -54,8 +54,8 @@
         :show-detail-icon="true"
       >
         <template slot-scope="props">
-          <b-table-column field="id" label="Question" width="10" numeric>{{ props.row.id }}</b-table-column>
-          <b-table-column field="name" label="Nom">
+          <b-table-column field="id" label="ID" width="10" numeric>{{ props.row.id }}</b-table-column>
+          <b-table-column field="name" label="Questions">
             <b-field v-if="props.row.editing">
               <b-input v-model="props.row.name" placeholder="Intitulé de la question"></b-input>
             </b-field>
@@ -77,6 +77,7 @@
 
 <script>
 import Question from "./question";
+import services from "./services";
 
 export default {
   name: "category",
@@ -99,8 +100,19 @@ export default {
   },
 
   methods: {
-    edit() {
-      this.$props.category.editing = !this.$props.category.editing;
+    async edit() {
+      try {
+        if (this.$props.category.editing) {
+          await services.renameCategory(this.$props.category);
+        }
+
+        this.$props.category.editing = !this.$props.category.editing;
+      } catch (error) {
+        this.$snackbar.open({
+          message: "Une erreur est survenue lors de l'édition du nom.",
+          type: "is-danger"
+        });
+      }
     },
 
     toggle(row) {
@@ -116,21 +128,41 @@ export default {
       }
     },
 
-    destroyQuestion(index) {
-      this.questions.splice(index, 1);
+    async destroyQuestion(index) {
+      try {
+        await services.destroyQuestion({ index, categoryId: this.$props.category.id });
+
+        this.questions.splice(index, 1);
+      } catch (error) {
+        this.$snackbar.open({
+          message:
+            "Une erreur est survenue lors de la suppression de la catégorie.",
+          type: "is-danger"
+        });
+      }
     },
 
     move(direction) {
       this.$emit("move", direction);
     },
 
-    moveQuestion(index, direction) {
-      if (index || direction == "down") {
-        this.questions.splice(
-          index + (direction == "up" ? -1 : 1),
-          0,
-          this.questions.splice(index, 1)[0]
-        );
+    async moveQuestion(index, direction) {
+      try {
+        await services.moveQuestion(index, direction, this.$props.category.id);
+        
+        if (index || direction == "down") {
+          this.questions.splice(
+            index + (direction == "up" ? -1 : 1),
+            0,
+            this.questions.splice(index, 1)[0]
+          );
+        }
+      } catch (error) {
+        this.$snackbar.open({
+          message:
+            "Une erreur est survenue lors de cette action.",
+          type: "is-danger"
+        });
       }
     },
 
@@ -138,23 +170,34 @@ export default {
       this.adding = true;
     },
 
-    validate(event) {
+    async createQuestion(event) {
       event.preventDefault();
 
-      const id =
-        Math.max(...this.questions.map(question => question.id), 0) + 1;
+      try {
+        const question = await services.createQuestion({
+          ...this.question,
+          categoryId: this.$props.category.id
+        });
 
-      if (this.questions.length)
-        this.questions[this.questions.length - 1].nextId = id;
+        this.questions.push({
+          ...question,
+          editing: false,
+          answers: []
+        });
 
-      this.questions.push({
-        ...this.question,
-        editing: false,
-        id,
-        nextId: null,
-        answers: []
-      });
-      this.question.name = null;
+        this.question.name = null;
+      } catch (error) {
+        let message =
+          "Une erreur est survenue lors de la création de la question.";
+
+        if (error.response && error.response.data == "Validation error")
+          message = "Cette question existe déjà.";
+
+        this.$snackbar.open({
+          message,
+          type: "is-danger"
+        });
+      }
     },
 
     cancel(event) {
@@ -167,7 +210,7 @@ export default {
     editMessage() {
       return this.$props.category.editing ? "Valider" : "Modifier";
     },
-    
+
     editClass() {
       return this.$props.category.editing ? "is-success" : "";
     }

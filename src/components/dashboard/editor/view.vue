@@ -1,7 +1,7 @@
 <template>
   <section class="section">
     <div class="container">
-      <form class="box" @submit="addCategory">
+      <form class="box" @submit="createCategory">
         <p class="title is-6">Nouvelle catégorie</p>
         <b-field>
           <b-input required v-model="category.name" placeholder="Nom"></b-input>
@@ -25,8 +25,7 @@
         :show-detail-icon="true"
       >
         <template slot-scope="props">
-          <b-table-column field="id" label="Catégorie" width="10" numeric>{{ props.row.id }}</b-table-column>
-          <b-table-column field="name" label="Nom">
+          <b-table-column field="name" label="Catégories">
             <b-field v-if="props.row.editing">
               <b-input v-model="props.row.name" placeholder="Nom de la catégorie"></b-input>
             </b-field>
@@ -47,9 +46,9 @@
 </template>
 
 <script>
-import Axios from "axios";
-
 import Category from "./category";
+
+import services from "./services";
 
 export default {
   name: "editor",
@@ -70,9 +69,9 @@ export default {
 
   async mounted() {
     try {
-      const { data } = await Axios.get(this.$store.state.url + "/form");
+      const form = await services.getForm();
 
-      this.categories = data.form.map(category => {
+      this.categories = form.map(category => {
         category.questions = category.questions.map(question => {
           question.answers = question.answers.map(answer => ({
             ...answer,
@@ -93,42 +92,69 @@ export default {
   },
 
   methods: {
-    destroyCategory(index) {
-      this.categories.splice(index, 1);
-    },
-
     toggle(row) {
       this.$refs.categories.toggleDetails(row);
     },
 
-    moveCategory(index, direction) {
-      if (index || direction == "down") {
-        this.categories.splice(
-          index + (direction == "up" ? -1 : 1),
-          0,
-          this.categories.splice(index, 1)[0]
-        );
+    async createCategory(event) {
+      event.preventDefault();
+
+      try {
+        const category = await services.createCategory(this.category);
+
+        this.categories.push({
+          ...category,
+          editing: false,
+          questions: []
+        });
+
+        this.category.name = null;
+      } catch (error) {
+        let message =
+          "Une erreur est survenue lors de la création de la catégorie.";
+
+        if (error.response && error.response.data == "Validation error")
+          message = "Cette catégorie existe déjà.";
+
+        this.$snackbar.open({
+          message,
+          type: "is-danger"
+        });
       }
     },
 
-    addCategory(event) {
-      event.preventDefault();
+    async destroyCategory(index) {
+      try {
+        await services.destroyCategory({ index });
 
-      const id =
-        Math.max(...this.categories.map(question => question.id), 0) + 1;
+        this.categories.splice(index, 1);
+      } catch (error) {
+        this.$snackbar.open({
+          message:
+            "Une erreur est survenue lors de la suppression de la catégorie.",
+          type: "is-danger"
+        });
+      }
+    },
 
-      if (this.categories.length)
-        this.categories[this.categories.length - 1].nextId = id;
-
-      this.categories.push({
-        ...this.category,
-        id,
-        editing: false,
-        nextId: null,
-        questions: []
-      });
-
-      this.category.name = null;
+    async moveCategory(index, direction) {
+      try {
+        await services.moveCategory(index, direction);
+        
+        if (index || direction == "down") {
+          this.categories.splice(
+            index + (direction == "up" ? -1 : 1),
+            0,
+            this.categories.splice(index, 1)[0]
+          );
+        }
+      } catch (error) {
+        this.$snackbar.open({
+          message:
+            "Une erreur est survenue lors de cette action.",
+          type: "is-danger"
+        });
+      }
     }
   }
 };
