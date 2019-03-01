@@ -10,7 +10,16 @@
           >{{editMessage}}</button>
 
           <div v-if="answer.editing">
-            <button class="button is-small is-outlined is-danger" @click="destroy">Supprimer</button>
+            <b-field grouped>
+              <button class="button is-small is-outlined is-danger" @click="destroy">Supprimer</button>
+              <b-select required size="is-small" placeholder="Code réponse" v-model="answer.code">
+                <option
+                  v-for="code in codes"
+                  :value="code.number"
+                  :key="code.number"
+                >{{ code.value }}</option>
+              </b-select>
+            </b-field>
           </div>
         </div>
       </div>
@@ -25,7 +34,11 @@
 
     <div v-if="answer.editing">
       <b-field>
-        <b-input type="textarea" v-model="answer.explanation" placeholder="Explications supplémentaires"></b-input>
+        <b-input
+          type="textarea"
+          v-model="answer.explanation"
+          placeholder="Explications supplémentaires"
+        ></b-input>
       </b-field>
       <b-field>
         <b-input v-model="answer.nextId" placeholder="Question suivant cette réponse (ID)"></b-input>
@@ -33,13 +46,15 @@
     </div>
     <div v-else>
       <p>{{answer.explanation}}</p>
-      <p v-if="answer.nextId"><strong>Question suivant cette réponse :</strong> {{answer.nextId}}</p>
+      <span v-if="answer.nextId" class="tag is-info">
+        <strong>Question suivant cette réponse : {{answer.nextId}}</strong>
+      </span>
     </div>
   </section>
 </template>
 
 <script>
-import services from './services';
+import services from "./services";
 
 export default {
   name: "answer",
@@ -47,7 +62,22 @@ export default {
   props: ["answer"],
 
   data() {
-    return {};
+    return {
+      codes: [
+        {
+          value: "Vert",
+          number: 0
+        },
+        {
+          value: "Warning",
+          number: 1
+        },
+        {
+          value: "Rouge",
+          number: 2
+        }
+      ]
+    };
   },
 
   methods: {
@@ -77,7 +107,7 @@ export default {
 
     move(direction) {
       this.$emit("move", direction);
-    },
+    }
   },
 
   computed: {

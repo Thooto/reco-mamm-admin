@@ -6,7 +6,7 @@ Vue.use(Vuex);
 export default new Vuex.Store({
   state: {
     token: localStorage.token,
-    logged: false,
+    logged: localStorage.logged,
     url: process.env.VUE_APP_API_URL
   },
 
@@ -14,12 +14,14 @@ export default new Vuex.Store({
     login(state, token) {
       localStorage.token = token;
       state.token = token;
+      localStorage.logged = true;
       state.logged = true;
     },
     
     logout(state) {
       localStorage.token = null;
       state.token = null;
+      localStorage.logged = false;
       state.logged = false;
     }
   },

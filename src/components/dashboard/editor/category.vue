@@ -55,7 +55,7 @@
       >
         <template slot-scope="props">
           <b-table-column field="id" label="ID" width="10" numeric>{{ props.row.id }}</b-table-column>
-          <b-table-column field="name" label="Questions">
+          <b-table-column field="name" label="Question">
             <b-field v-if="props.row.editing">
               <b-input v-model="props.row.name" placeholder="Intitulé de la question"></b-input>
             </b-field>

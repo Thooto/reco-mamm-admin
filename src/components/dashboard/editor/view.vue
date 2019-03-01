@@ -25,7 +25,7 @@
         :show-detail-icon="true"
       >
         <template slot-scope="props">
-          <b-table-column field="name" label="Catégories">
+          <b-table-column field="name" label="Catégorie">
             <b-field v-if="props.row.editing">
               <b-input v-model="props.row.name" placeholder="Nom de la catégorie"></b-input>
             </b-field>

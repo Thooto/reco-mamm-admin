@@ -14,6 +14,3 @@ export default {
   components: { Navbar }
 };
 </script>
-
-<style lang="scss">
-</style>

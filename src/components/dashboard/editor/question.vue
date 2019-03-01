@@ -9,8 +9,10 @@
             @click="edit"
           >{{editMessage}}</button>
 
-          <div v-if="question.editing">
-            <button class="button is-small is-outlined is-danger" @click="destroy">Supprimer</button>
+          <div v-if="question.editing" class="inline">
+            <b-field grouped>
+              <button class="button is-small is-outlined is-danger" @click="destroy">Supprimer</button>
+            </b-field>
           </div>
         </div>
       </div>
@@ -25,9 +27,12 @@
     </div>
 
     <div class="box" v-if="adding">
-      <form @submit="validate">
-        <b-field>
+      <form @submit="createAnswer">
+        <b-field grouped>
           <b-input required expanded size="is-small" placeholder="Réponse" v-model="answer.name"></b-input>
+          <b-select required size="is-small" placeholder="Code réponse" v-model="answer.code">
+            <option v-for="code in codes" :value="code.number" :key="code.number">{{ code.value }}</option>
+          </b-select>
         </b-field>
         <b-field>
           <b-input
@@ -37,7 +42,7 @@
             type="textarea"
           ></b-input>
         </b-field>
-        <b-field>
+        <b-field grouped>
           <div class="control">
             <input type="submit" class="button is-small is-outlined is-success" value="Valider">
           </div>
@@ -58,12 +63,17 @@
         :show-detail-icon="true"
       >
         <template slot-scope="props">
-          <b-table-column field="name" label="Réponses">
+          <b-table-column field="name" label="Réponse">
             <b-field v-if="props.row.editing">
               <b-input v-model="props.row.name" placeholder="Intitulé de la réponse"></b-input>
             </b-field>
             <a v-else @click="toggle(props.row)">{{ props.row.name }}</a>
           </b-table-column>
+          <b-table-column
+            field="code"
+            label="Code"
+            width="120"
+          >{{ ['Vert', 'Warning', 'Rouge'][props.row.code] }}</b-table-column>
         </template>
 
         <template slot="detail" slot-scope="props">
@@ -96,10 +106,26 @@ export default {
 
       answer: {
         name: null,
-        explanation: null
+        explanation: null,
+        code: null
       },
 
-      defaultOpenedDetails: []
+      defaultOpenedDetails: [],
+
+      codes: [
+        {
+          value: "Vert",
+          number: 0
+        },
+        {
+          value: "Warning",
+          number: 1
+        },
+        {
+          value: "Rouge",
+          number: 2
+        }
+      ]
     };
   },
 
@@ -134,7 +160,10 @@ export default {
 
     async destroyAnswer(index) {
       try {
-        await services.destroyAnswer({ index, questionId: this.$props.question.id });
+        await services.destroyAnswer({
+          index,
+          questionId: this.$props.question.id
+        });
 
         this.answers.splice(index, 1);
       } catch (error) {
@@ -153,7 +182,7 @@ export default {
     async moveAnswer(index, direction) {
       try {
         await services.moveAnswer(index, direction, this.$props.question.id);
-        
+
         if (index || direction == "down") {
           this.answers.splice(
             index + (direction == "up" ? -1 : 1),
@@ -163,8 +192,7 @@ export default {
         }
       } catch (error) {
         this.$snackbar.open({
-          message:
-            "Une erreur est survenue lors de cette action.",
+          message: "Une erreur est survenue lors de cette action.",
           type: "is-danger"
         });
       }
@@ -190,6 +218,8 @@ export default {
         });
 
         this.answer.name = null;
+        this.answer.code = null;
+        this.answer.explanation = null;
       } catch (error) {
         let message =
           "Une erreur est survenue lors de la création de la réponse.";
